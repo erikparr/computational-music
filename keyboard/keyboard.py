@@ -1,5 +1,5 @@
 import tkinter as tk
-from pythonosc import dispatcher, osc_server
+from pythonosc import dispatcher, osc_server, udp_client
 from circle_fifths import CircleOfFifths
 from music_theory import MusicTheory
 from key_color import KeyColorManager
@@ -157,6 +157,13 @@ class PianoApp:
         server = osc_server.ThreadingOSCUDPServer(('127.0.0.1', 57121), disp)
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()
+        # IP address and port of the destination Python app
+        self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 50000)  #send to keyboard_listener.py
+
+
+    def setup_osc_client(self):
+        # IP address and port of the destination Python app
+        self.osc_client = udp_client.SimpleUDPClient("127.0.0.1", 57122)  # Adjust IP and port as necessary
 
     def key_on_handler(self, unused_addr, *args):
         print(f"Key On Message Received: {args}")
@@ -164,6 +171,8 @@ class PianoApp:
         if midi_number is not None:
             print(f"Processing Key On for MIDI: {midi_number}")
             self.root.after(0, self.activate_key, midi_number)
+            # Forward the message to the destination app
+            self.osc_client.send_message("/keyOn", midi_number)
 
     def key_off_handler(self, unused_addr, *args):
         print(f"Key Off Message Received: {args}")
@@ -171,6 +180,8 @@ class PianoApp:
         if midi_number is not None:
             print(f"Processing Key Off for MIDI: {midi_number}")
             self.root.after(0, self.deactivate_key, midi_number)
+            # Forward the message to the destination app
+            self.osc_client.send_message("/keyOff", midi_number)
 
     def update_keys(self, white_keys, black_keys):
         self.white_keys = white_keys

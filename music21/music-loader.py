@@ -1,6 +1,9 @@
 # music21_module.py
 from music21 import *
+from keyboard_listener import KeyboardListener
 from pythonosc import udp_client
+from pythonosc.dispatcher import Dispatcher
+from pythonosc.osc_server import BlockingOSCUDPServer
 import tkinter as tk
 from tkinter import filedialog, Tk, Button
 import time
@@ -25,6 +28,13 @@ class Music21Module:
         self.prev_chord = None  # Initialize previous chord variable
         self.instrument_stave_map = {}  # Step 2: Initialize the mapping
         self.selected_instrument = None  # Initialize selected_instrument
+        self.keyboard_listener = KeyboardListener()
+        # Add this to the create_widgets method
+        self.chord_listener_var = tk.BooleanVar()
+        self.chord_listener_toggle = tk.Checkbutton(
+        self.master, text="Chord Listener", variable=self.chord_listener_var, command=self.toggle_chord_listener)
+        self.chord_listener_toggle.pack()
+
         self.create_widgets()
 
     def create_widgets(self):
@@ -92,6 +102,14 @@ class Music21Module:
             self.master.unbind("<Right>")
             self.master.unbind("<Left>")
 
+    def toggle_chord_listener(self):
+        if self.chord_listener_var.get():
+            self.keyboard_listener.start_listening()
+            print("Chord Listener enabled.")
+        else:
+            self.keyboard_listener.stop_listening()
+            print("Chord Listener disabled.")
+
     def send_chord_on(self, chord):
         midi_numbers = [note.pitch.midi for note in chord]
         if self.send_osc_var.get():
@@ -143,7 +161,7 @@ class Music21Module:
 
             # Update previous chord and manage key off with a delay
             self.prev_chord = chord
-            threading.Timer(0.5, self.stop_current_chord, args=[chord]).start()
+            # threading.Timer(1, self.stop_current_chord, args=[chord]).start()
 
     def stop_current_chord(self, chord):
         for note in chord:
